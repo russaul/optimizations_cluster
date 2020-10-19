@@ -2,7 +2,7 @@ import random
 import matplotlib.pyplot  as plt
 
 class Server():
-    def __init__(self, core, memory, id = 0):
+    def __init__(self, core: int, memory: int, id = 0):
         self.core = core
         self.memory = memory
         self.vir_mac = []
@@ -42,12 +42,12 @@ class Server():
         print()
 
 class VirtMac():
-    def __init__(self, core, memory, id = 0):
+    def __init__(self, core: int, memory: int, id = 0):
         self.core = core
         self.memory = memory
         self.id = id
 
-def heapify(vms, heap_size, root_index):
+def heapify(vms: list, heap_size, root_index):
     largest = root_index
     left_child = (2 * root_index) + 1
     right_child = (2 * root_index) + 2
@@ -59,7 +59,7 @@ def heapify(vms, heap_size, root_index):
         vms[root_index], vms[largest] = vms[largest], vms[root_index]
         heapify(vms, heap_size, largest)
 
-def heap_sort(vms):
+def heap_sort(vms: list):
     n = len(vms)
     for i in range(n, -1, -1):
         heapify(vms, n, i)
@@ -67,7 +67,7 @@ def heap_sort(vms):
         vms[i], vms[0] = vms[0], vms[i]
         heapify(vms, i, 0)
 
-def clustering(vms, cluster, map_cluster):
+def clustering(vms: list, cluster: list, map_cluster: dict):
     n = 0
     num_srv = 0
     for i in range(0, len(vms)):
@@ -91,7 +91,7 @@ def clustering(vms, cluster, map_cluster):
     else:
         return cluster, map_cluster
 
-def first_fit_decreasing(cluster, map_cluster):
+def first_fit_decreasing(cluster: list, map_cluster: dict):
     num_migration = 0
     new_cluster = cluster
     list_vms = []
@@ -121,70 +121,70 @@ def first_fit_decreasing(cluster, map_cluster):
 if __name__ == '__main__':
     servers = [Server(100, 500), Server(15, 1000)]
     vm = [VirtMac(4, 16), VirtMac(8, 32), VirtMac(16, 32)]
-    # t = int(input("Insert count of servers in cluster: \n"))
-    # c_vm = int(input("Insert count of virtual machine: \n"))
-    t_start = 200
-    c_vm_start = 1000
-    migrations = []
-    count_servers = []
-    active_servers = []
-    for a in range(1, 150):
-        t = t_start
-        c_vm = c_vm_start
-        cluster = []
-        vms = []
-        for i in range(t):
-            tmp = servers[random.randint(0, len(servers) - 1)]
-            cluster.append(Server(tmp.core, tmp.memory, id=i + 1))
-        for i in range(c_vm):
-            tmp = vm[random.randint(0, len(vm) - 1)]
-            vms.append(VirtMac(tmp.core, tmp.memory, id=i + 1))
-        map_cluster = {}
-        cluster, map_cluster = clustering(vms, cluster, map_cluster)
-        if len(cluster) == 0:
-            continue
-        # print("FFD--------------------------------------------------------------- ")
-        new_cluster, count_mig = first_fit_decreasing(cluster, map_cluster)
-        for i in new_cluster:
-            i.deactivation()
-        act = 0
-        for i in new_cluster:
-            if i.active:
-                act += 1
-        active_servers.append(act)
-        # print("Active servers: ", act)
-        # print("Count of migration: ", count_mig)
-        count_servers.append(len(cluster))
-        migrations.append(count_mig)
-    plt.title("FFD")
-    # plt.xlabel("Servers")
-    plt.ylabel("Active Servers")
-    plt.plot(active_servers)
-    # plt.show()
-    plt.savefig("Active_server_test")
-    # cluster = []
-    # vms = []
-    # for i in range(t):
-    #     tmp = servers[random.randint(0, len(servers) - 1)]
-    #     cluster.append(Server(tmp.core, tmp.memory, id=i+1))
-    # for i in range(c_vm):
-    #     tmp = vm[random.randint(0, len(vm)-1)]
-    #     vms.append(VirtMac(tmp.core, tmp.memory, id=i+1))
-    # map_cluster = {}
-    # cluster, map_cluster = clustering(vms, cluster, map_cluster)
-    # if len(cluster) == 0:
-    #     exit(0)
-    # # for i in cluster:
-    # #     i.server_inf()
-    # print("FFD--------------------------------------------------------------- ")
-    # new_cluster, count_mig = first_fit_decreasing(cluster, map_cluster)
+    t = int(input("Insert count of servers in cluster: \n"))
+    c_vm = int(input("Insert count of virtual machine: \n"))
+    # t_start = 200
+    # c_vm_start = 1000
+    # migrations = []
+    # count_servers = []
+    # active_servers = []
+    # for a in range(1, 150):
+    #     t = t_start
+    #     c_vm = c_vm_start
+    #     cluster = []
+    #     vms = []
+    #     for i in range(t):
+    #         tmp = servers[random.randint(0, len(servers) - 1)]
+    #         cluster.append(Server(tmp.core, tmp.memory, id=i + 1))
+    #     for i in range(c_vm):
+    #         tmp = vm[random.randint(0, len(vm) - 1)]
+    #         vms.append(VirtMac(tmp.core, tmp.memory, id=i + 1))
+    #     map_cluster = {}
+    #     cluster, map_cluster = clustering(vms, cluster, map_cluster)
+    #     if len(cluster) == 0:
+    #         continue
+    #     # print("FFD--------------------------------------------------------------- ")
+    #     new_cluster, count_mig = first_fit_decreasing(cluster, map_cluster)
+    #     for i in new_cluster:
+    #         i.deactivation()
+    #     act = 0
+    #     for i in new_cluster:
+    #         if i.active:
+    #             act += 1
+    #     active_servers.append(act)
+    #     # print("Active servers: ", act)
+    #     # print("Count of migration: ", count_mig)
+    #     count_servers.append(len(cluster))
+    #     migrations.append(count_mig)
+    # plt.title("FFD")
+    # # plt.xlabel("Servers")
+    # plt.ylabel("Active Servers")
+    # plt.plot(active_servers)
+    # # plt.show()
+    # plt.savefig("Active_server_test")
+    cluster = []
+    vms = []
+    for i in range(t):
+        tmp = servers[random.randint(0, len(servers) - 1)]
+        cluster.append(Server(tmp.core, tmp.memory, id=i+1))
+    for i in range(c_vm):
+        tmp = vm[random.randint(0, len(vm)-1)]
+        vms.append(VirtMac(tmp.core, tmp.memory, id=i+1))
+    map_cluster = {}
+    cluster, map_cluster = clustering(vms, cluster, map_cluster)
+    if len(cluster) == 0:
+        exit(0)
+    # for i in cluster:
+    #     i.server_inf()
+    print("FFD--------------------------------------------------------------- ")
+    new_cluster, count_mig = first_fit_decreasing(cluster, map_cluster)
+    for i in new_cluster:
+        i.deactivation()
     # for i in new_cluster:
-    #     i.deactivation()
-    # # for i in new_cluster:
-    # #      i.server_inf()
-    # act = 0
-    # for i in new_cluster:
-    #     if i.active:
-    #         act += 1
-    # print("Active servers: ", act)
-    # print("Count of migration: ", count_mig)
+    #      i.server_inf()
+    act = 0
+    for i in new_cluster:
+        if i.active:
+            act += 1
+    print("Active servers: ", act)
+    print("Count of migration: ", count_mig)
