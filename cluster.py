@@ -174,14 +174,14 @@ if __name__ == '__main__':
     cluster, map_cluster = clustering(vms, cluster, map_cluster)
     if len(cluster) == 0:
         exit(0)
-    # for i in cluster:
-    #     i.server_inf()
+    for i in cluster:
+        i.server_inf()
     print("FFD--------------------------------------------------------------- ")
     new_cluster, count_mig = first_fit_decreasing(cluster, map_cluster)
     for i in new_cluster:
         i.deactivation()
-    # for i in new_cluster:
-    #      i.server_inf()
+    for i in new_cluster:
+         i.server_inf()
     act = 0
     for i in new_cluster:
         if i.active:
