@@ -1,10 +1,12 @@
 import random
 import matplotlib.pyplot  as plt
-from copy import copy
+from copy import copy, deepcopy
+import time
 
 alpha = 1
-mu = 1
+mu = 5
 standart = 0.2
+n = 2
 
 class Server():
     def __init__(self, core: int, memory: int, id = 0):
@@ -108,7 +110,7 @@ def heap_sort(vms: list, flag: str):
             heapify_memory(vms, i, 0)
     if flag == "free_core":
         for i in range(n, -1, -1):
-            heapify_core(vms, n, i)
+            heapify_free_core(vms, n, i)
         for i in range(n - 1, 0, -1):
             vms[i], vms[0] = vms[0], vms[i]
             heapify_free_core(vms, i, 0)
@@ -177,10 +179,16 @@ def calculating_weight(map_n: dict):
     for i in range(1, len(map_n)):
         a = map_n.get(i)
 
-def check_free_servers(cluster: list, vm: VirtMac):
+def find_cur_server(cur_id: int, servers: list):
+    for i in servers:
+        if i.id == cur_id:
+            return i
+    return None
+
+def check_free_servers(servers: dict, vm: VirtMac):
     free_srv = []
-    for i in cluster:
-        if i.free_core > vm.core and i.free_mem > vm.memory:
+    for i in servers:
+        if servers.get(i)[0] >= vm.core and servers.get(i)[1] >= vm.memory and servers.get(i)[2]:
             free_srv.append(i)
     return free_srv
 
@@ -199,91 +207,95 @@ def computing_free_cluster(cluster: list):
     for i in cluster:
         computing_free_space(i)
 
-def loop(servers: dict, vms: list, map_cluster: dict, free_dict: dict, weight_0: list, active: int, num_migr: int):
-    tmp_active = active
-    print(num_migr)
-    for j in servers:
-        if not servers.get(j)[2]:
-            tmp_active -= 1
-    global standart
-    global alpha, mu
-    if alpha * tmp_active + mu * num_migr <= mu * weight_0[1] + alpha * weight_0[0]:
-        free_core, free_mem, memory, core = 0, 0, 0, 0
-        for i in servers:
-            if servers.get(i)[2]:
-                free_core += servers.get(i)[0]
-                free_mem += servers.get(i)[1]
-                memory += i.memory
-                core += i.core
-        if (free_core + free_mem) / (core + memory) <= standart:
-            weight_0 = [tmp_active, num_migr]
-            return map_cluster, num_migr, weight_0
-    tmp_map_cluster = map_cluster
-    tmp_num_migr = num_migr
-    if len(vms) == 0:
-        if alpha*tmp_active + mu*num_migr <= mu*weight_0[1] + alpha*weight_0[0]:
-            free_core, free_mem, memory, core = 0, 0, 0, 0
-            for i in servers:
-                if servers.get(i)[2]:
-                    free_core += servers.get(i)[0]
-                    free_mem += servers.get(i)[1]
-                    memory += i.memory
-                    core += i.core
-            if (free_core + free_mem)/(core + memory) <= standart:
-                weight_0 = [tmp_active, num_migr]
-        return map_cluster, num_migr, weight_0
-    vm = vms[0]
-    tmp_srv = copy(free_dict.get(vm.id))
-    for i in tmp_srv:
-        if servers.get(i)[2] == False:
-            continue
-        tmp_free_dict = copy(free_dict)
-        tmp_vms = copy(vms)
-        tmp_map_cluster = copy(map_cluster)
-        tmp_servers = copy(servers)
+
+def loop_1(servers: dict, servers_dict: dict, vms_dict: dict, map_cluster: dict, free_dict: dict, weight_0: list, num_migr: int):
+    global alpha, mu, standart, n
+    active = 0
+    for i in servers_dict:
+        if servers_dict.get(i)[2] == True:
+            active += 1
+    if num_migr == n:
+        if active < weight_0[0]:
+            weight_0 = [active, num_migr]
+            print(weight_0)
+        return weight_0
+    free_core, free_mem, memory, core = 0, 0, 0, 0
+    for i in servers:
+        if servers_dict.get(i)[2]:
+            free_core += servers_dict.get(i)[0]
+            free_mem += servers_dict.get(i)[1]
+            memory += servers.get(i).memory
+            core += servers.get(i).core
+    if len(vms_dict) == 0:
+        if num_migr == n:
+            if active < weight_0[0]:
+                weight_0 = [active, num_migr]
+                print(weight_0)
+        return weight_0
+    keys = list(vms_dict.keys())
+    cur_id = keys[0]
+    tmp_srvs = free_dict.get(cur_id)
+    for i in tmp_srvs:
+        tmp_map = deepcopy(map_cluster)
+        tmp_vms = deepcopy(vms_dict)
+        tmp_serv_dict = deepcopy(servers_dict)
+        tmp_free_dict = deepcopy(free_dict)
         tmp_num_migr = num_migr
-        if i.vir_mac.count(vm) == 1:
-            tmp_vms.remove(vm)
+        if servers.get(i).id == servers.get(tmp_map.get(cur_id)).id:
+            tmp_vms.pop(cur_id)
         else:
             tmp_num_migr += 1
-            tmp_servers.get(i)[0] -= vm.core
-            tmp_servers.get(i)[1] -= vm.memory
-            tmp_servers.get(tmp_map_cluster.get(vm.id))[0] += vm.core
-            tmp_servers.get(tmp_map_cluster.get(vm.id))[1] += vm.memory
-            tmp_map_cluster[vm.id] = i
-            tmp_vms.remove(vm)
-            new_servers = []
-            for j in tmp_servers:
-                if tmp_servers.get(j)[0] == j.core:
-                    tmp_servers.get(j)[2] = False
-                    continue
-                new_servers.append(j)
+            tmp_serv_dict.get(i)[0] -= tmp_vms.get(cur_id).core
+            tmp_serv_dict.get(i)[1] -= tmp_vms.get(cur_id).memory
+            tmp_serv_dict.get(tmp_map.get(cur_id))[0] += tmp_vms.get(cur_id).core
+            tmp_serv_dict.get(tmp_map.get(cur_id))[1] += tmp_vms.get(cur_id).memory
+            tmp_map[cur_id] = i
+            for j in tmp_serv_dict:
+                if tmp_serv_dict.get(j)[0] == servers.get(j).core:
+                    tmp_serv_dict.get(j)[2] = False
+            tmp_vms.pop(cur_id)
+            a = []
             for j in tmp_vms:
-                tmp_free_dict[j.id] = check_free_servers(new_servers, j)
-                heap_sort(tmp_free_dict.get(j.id), "free_core")
-        tmp_map_cluster, tmp_num_migr, weight_0 = loop(tmp_servers, tmp_vms, tmp_map_cluster, tmp_free_dict, weight_0, active, tmp_num_migr)
-    return tmp_map_cluster, tmp_num_migr, weight_0
+                a.append(tmp_vms.get(j))
+            for j in a:
+                tmp_free_dict[j.id] = check_free_servers(tmp_serv_dict, j)
+        weight_0 = loop_1(servers, tmp_serv_dict, tmp_vms, tmp_map, tmp_free_dict, weight_0, tmp_num_migr)
+    return weight_0
+
 
 def new_alg(cluster: list, map_cluster: dict, weight_0: list):
     vms = []
     for i in cluster:
         vms += i.vir_mac
     heap_sort(vms, "core")
+    new_map = {}
     vms.reverse()
+    vms_dict = {}
     free_dict = {}
-    for i in vms:
-        free_dict[i.id] = check_free_servers(cluster, i)
-        heap_sort(free_dict.get(i.id), "free_core")
     servers = {}
+    servers_dict = {}
     for i in cluster:
-        servers[i] = [i.free_core, i.free_mem, i.active]
+        servers[i.id] = i
+    for i in servers:
+        servers_dict[servers.get(i).id] = [servers.get(i).free_core, servers.get(i).free_mem, servers.get(i).active]
+    for i in map_cluster:
+        for j in servers:
+            if servers.get(j) == map_cluster.get(i):
+                new_map[i] = j
+    for i in vms:
+        free_dict[i.id] = check_free_servers(servers_dict, i)
+    for i in vms:
+        vms_dict[i.id] = i
     num_migr = 0
-    active = len(cluster)
-    return loop(servers, vms, map_cluster, free_dict, weight_0, active, num_migr)
+    # for i in vms_dict:
+    #     print(i)
+    weight_0 = [len(servers), len(vms_dict)]
+    return loop_1(servers, servers_dict, vms_dict, new_map, free_dict, weight_0, num_migr)
 
 
 if __name__ == '__main__':
-    servers = [Server(100, 500), Server(150, 1000)]
+    start_time = time.time()
+    servers = [Server(100, 500), Server(15, 1000)]
     vm = [VirtMac(4, 16), VirtMac(8, 32), VirtMac(16, 32)]
     t = int(input("Insert count of servers in cluster: \n"))
     c_vm = int(input("Insert count of virtual machine: \n"))
@@ -315,5 +327,6 @@ if __name__ == '__main__':
     weight = [act_serv, num_migr]
     print(weight)
     computing_free_cluster(cluster)
-    new_map, num_migr, weight = new_alg(cluster, map_cluster, weight)
+    weight = new_alg(cluster, map_cluster, weight)
     print(weight)
+    print("--- %s seconds ---" % (time.time() - start_time))
