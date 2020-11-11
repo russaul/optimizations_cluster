@@ -1,12 +1,13 @@
 import random
-import matplotlib.pyplot  as plt
 from copy import copy, deepcopy
 import time
+import configparser
 
 alpha = 1
-mu = 5
+mu = 1
 standart = 0.2
-n = 2
+n = 0
+
 
 class Server():
     def __init__(self, core: int, memory: int, id = 0):
@@ -39,24 +40,94 @@ class Server():
             return False
         return True
 
-    def server_inf(self, numb=0):
+    def server_inf(self):
+        f = open('server_inf.txt', 'a')
+        f.write("\n Server #" + str(self.id) + "\n")
+        f.write("Core (server): " + str(self.core) + "\n")
+        f.write("Memory (server): " + str(self.memory) + "\n")
+        f.write("Free_core: " + str(self.free_core) + "\n")
+        f.write("Free_memory: " + str(self.free_mem) + "\n")
+        f.write("     Virtual machines: " + "\n")
+        for i in self.vir_mac:
+            f.write("Virtual machine #" + str(i.id) + "\n")
+            f.write("-------Core: " + str(i.core) + "\n")
+            f.write("-------Memory: " + str(i.memory) + "\n")
+        f.close()
+        print()
         print("Server #", self.id)
         print("Core (server): ", self.core)
         print("Memory (server): ", self.memory)
+        print("Free_core: ", self.free_core)
+        print("Free_memory: ", self.free_mem)
         print("     Virtual machines: ")
-        n = 1
         for i in self.vir_mac:
             print("Virtual machine #", i.id)
             print("-------Core: ", i.core)
             print("-------Memory: ", i.memory)
-            n += 1
         print()
+
 
 class VirtMac():
     def __init__(self, core: int, memory: int, id = 0):
         self.core = core
         self.memory = memory
         self.id = id
+
+
+def read_cfg():
+    config = configparser.ConfigParser()
+    config.read("start.ini")
+    regime = config["General"]["regime"]
+    vm_cfg = config["VirtMac"]
+    vms = []
+    for i in range(1, int(vm_cfg["count_type"]) + 1):
+        vms.append(VirtMac(int(vm_cfg[str(i) + "_core"]), int(vm_cfg[str(i) + "_memory"])))
+    return regime, vms
+
+
+def read_pack():
+    global n
+    config = configparser.ConfigParser()
+    config.read("start.ini")
+    n = int(config["Pack"]["budget_migration"])
+
+
+def read_online():
+    config = configparser.ConfigParser()
+    config.read("start.ini")
+    gen_time = float(config["Online"]["gen_time"])
+    limit_calls = int(config["Online"]["limit_calls"])
+    regime = config["Online"]["regime"]
+    return gen_time, limit_calls, regime
+
+
+def create_cluster():
+    config = configparser.ConfigParser()
+    config.read("start.ini")
+    srv_cfg = config["Servers"]
+    cluster = []
+    counter = 1
+    for i in range(1, int(srv_cfg["count_type"])+1):
+        for j in range(1, int(srv_cfg[str(i)+"_count"])+1):
+            cluster.append(Server(int(srv_cfg[str(i)+"_core"]), int(srv_cfg[str(i)+"_memory"]), counter))
+            counter += 1
+    random.shuffle(cluster)
+    return cluster
+
+
+def create_vms():
+    config = configparser.ConfigParser()
+    config.read("start.ini")
+    vm_cfg = config["VirtMac"]
+    vms = []
+    counter = 1
+    for i in range(1, int(vm_cfg["count_type"])+1):
+        for j in range(1, int(vm_cfg[str(i)+"_count"])+1):
+            vms.append(VirtMac(int(vm_cfg[str(i)+"_core"]), int(vm_cfg[str(i)+"_memory"]), counter))
+            counter += 1
+    random.shuffle(vms)
+    return vms
+
 
 def heapify_core(vms: list, heap_size, root_index):
     largest = root_index
@@ -70,6 +141,7 @@ def heapify_core(vms: list, heap_size, root_index):
         vms[root_index], vms[largest] = vms[largest], vms[root_index]
         heapify_core(vms, heap_size, largest)
 
+
 def heapify_memory(vms: list, heap_size, root_index):
     largest = root_index
     left_child = (2 * root_index) + 1
@@ -82,6 +154,7 @@ def heapify_memory(vms: list, heap_size, root_index):
         vms[root_index], vms[largest] = vms[largest], vms[root_index]
         heapify_memory(vms, heap_size, largest)
 
+
 def heapify_free_core(vms: list, heap_size, root_index):
     largest = root_index
     left_child = (2 * root_index) + 1
@@ -93,6 +166,7 @@ def heapify_free_core(vms: list, heap_size, root_index):
     if largest != root_index:
         vms[root_index], vms[largest] = vms[largest], vms[root_index]
         heapify_free_core(vms, heap_size, largest)
+
 
 def heap_sort(vms: list, flag: str):
     n = len(vms)
@@ -114,6 +188,7 @@ def heap_sort(vms: list, flag: str):
         for i in range(n - 1, 0, -1):
             vms[i], vms[0] = vms[0], vms[i]
             heapify_free_core(vms, i, 0)
+
 
 def clustering(vms: list, cluster: list, map_cluster: dict):
     n = 0
@@ -139,6 +214,7 @@ def clustering(vms: list, cluster: list, map_cluster: dict):
     else:
         return cluster, map_cluster
 
+
 def cluster_copy(cluster: list):
     new_cluster = []
     for i in cluster:
@@ -148,6 +224,7 @@ def cluster_copy(cluster: list):
             srv.vir_mac.append(vm)
         new_cluster.append(srv)
     return new_cluster
+
 
 def first_fit_decreasing(cluster: list, map_cluster: dict):
     num_migration = 0
@@ -175,9 +252,11 @@ def first_fit_decreasing(cluster: list, map_cluster: dict):
                     continue
     return map_cluster, num_migration
 
+
 def calculating_weight(map_n: dict):
     for i in range(1, len(map_n)):
         a = map_n.get(i)
+
 
 def find_cur_server(cur_id: int, servers: list):
     for i in servers:
@@ -185,12 +264,14 @@ def find_cur_server(cur_id: int, servers: list):
             return i
     return None
 
+
 def check_free_servers(servers: dict, vm: VirtMac):
     free_srv = []
     for i in servers:
         if servers.get(i)[0] >= vm.core and servers.get(i)[1] >= vm.memory and servers.get(i)[2]:
             free_srv.append(i)
     return free_srv
+
 
 def computing_free_space(srv: Server):
     core = 0
@@ -203,22 +284,29 @@ def computing_free_space(srv: Server):
     if srv.free_core == srv.core:
         srv.active = False
 
+
 def computing_free_cluster(cluster: list):
     for i in cluster:
         computing_free_space(i)
 
 
-def loop_1(servers: dict, servers_dict: dict, vms_dict: dict, map_cluster: dict, free_dict: dict, weight_0: list, num_migr: int):
+def _sort_free_servers(free_dict: dict, servers_dict: dict, servers: dict):
+    for i in free_dict:
+        tmp = copy(free_dict.get(i))
+        new_tmp = []
+        for j in tmp:
+            new_tmp.append([j]+servers_dict.get(j))
+        new_tmp.sort(key=lambda lst: lst[1])
+        tmp = []
+        for j in new_tmp:
+            tmp.append(j[0])
+        tmp = sorted(tmp, key=lambda i: servers.get(i).core, reverse=True)
+        free_dict[i] = copy(tmp)
+    return free_dict
+
+
+def loop_1(servers: dict, servers_dict: dict, vms_dict: dict, map_cluster: dict, free_dict: dict, weight_0: list, num_migr: int, level):
     global alpha, mu, standart, n
-    active = 0
-    for i in servers_dict:
-        if servers_dict.get(i)[2] == True:
-            active += 1
-    if num_migr == n:
-        if active < weight_0[0]:
-            weight_0 = [active, num_migr]
-            print(weight_0)
-        return weight_0
     free_core, free_mem, memory, core = 0, 0, 0, 0
     for i in servers:
         if servers_dict.get(i)[2]:
@@ -226,14 +314,30 @@ def loop_1(servers: dict, servers_dict: dict, vms_dict: dict, map_cluster: dict,
             free_mem += servers_dict.get(i)[1]
             memory += servers.get(i).memory
             core += servers.get(i).core
+    level += 1
+    active = 0
+    for i in servers_dict:
+        if servers_dict.get(i)[2]:
+            active += 1
+    if num_migr >= n:
+        if active < weight_0[0]:
+            weight_0 = [active, num_migr]
+        return weight_0
+    if active < weight_0[0] or num_migr > weight_0[1]:
+        if active+num_migr < weight_0[0] + weight_0[1]:
+            weight_0 = [active, num_migr]
+            print(weight_0)
+            return weight_0
     if len(vms_dict) == 0:
-        if num_migr == n:
-            if active < weight_0[0]:
-                weight_0 = [active, num_migr]
-                print(weight_0)
+        if active < weight_0[0]:
+            weight_0 = [active, num_migr]
+            print(weight_0)
         return weight_0
     keys = list(vms_dict.keys())
     cur_id = keys[0]
+    for i in free_dict:
+        if len(free_dict.get(i)) < len(free_dict.get(cur_id)):
+            cur_id = i
     tmp_srvs = free_dict.get(cur_id)
     for i in tmp_srvs:
         tmp_map = deepcopy(map_cluster)
@@ -243,6 +347,7 @@ def loop_1(servers: dict, servers_dict: dict, vms_dict: dict, map_cluster: dict,
         tmp_num_migr = num_migr
         if servers.get(i).id == servers.get(tmp_map.get(cur_id)).id:
             tmp_vms.pop(cur_id)
+            tmp_free_dict.pop(cur_id)
         else:
             tmp_num_migr += 1
             tmp_serv_dict.get(i)[0] -= tmp_vms.get(cur_id).core
@@ -259,7 +364,9 @@ def loop_1(servers: dict, servers_dict: dict, vms_dict: dict, map_cluster: dict,
                 a.append(tmp_vms.get(j))
             for j in a:
                 tmp_free_dict[j.id] = check_free_servers(tmp_serv_dict, j)
-        weight_0 = loop_1(servers, tmp_serv_dict, tmp_vms, tmp_map, tmp_free_dict, weight_0, tmp_num_migr)
+            tmp_free_dict = _sort_free_servers(tmp_free_dict, tmp_serv_dict, servers)
+            tmp_free_dict.pop(cur_id)
+        weight_0 = loop_1(servers, tmp_serv_dict, tmp_vms, tmp_map, tmp_free_dict, weight_0, tmp_num_migr, level)
     return weight_0
 
 
@@ -267,9 +374,8 @@ def new_alg(cluster: list, map_cluster: dict, weight_0: list):
     vms = []
     for i in cluster:
         vms += i.vir_mac
-    heap_sort(vms, "core")
+    vms.sort(key=lambda vm: vm.core, reverse=True)
     new_map = {}
-    vms.reverse()
     vms_dict = {}
     free_dict = {}
     servers = {}
@@ -284,49 +390,107 @@ def new_alg(cluster: list, map_cluster: dict, weight_0: list):
                 new_map[i] = j
     for i in vms:
         free_dict[i.id] = check_free_servers(servers_dict, i)
+    free_dict = _sort_free_servers(free_dict, servers_dict, servers)
     for i in vms:
         vms_dict[i.id] = i
     num_migr = 0
-    # for i in vms_dict:
-    #     print(i)
-    weight_0 = [len(servers), len(vms_dict)]
-    return loop_1(servers, servers_dict, vms_dict, new_map, free_dict, weight_0, num_migr)
+    level = 0
+    return loop_1(servers, servers_dict, vms_dict, new_map, free_dict, weight_0, num_migr, level)
+
+
+def generating(vms: list, vm_list: list):
+    tmp = vms[random.randint(0, len(vms) - 1)]
+    new_id = 0
+    for i in vm_list:
+        if i.id > new_id:
+            new_id = i.id
+    new_id += 1
+    vm = VirtMac(tmp.core, tmp.memory, id=new_id)
+    vm_list.append(vm)
+    return vm, vm_list
+
+
+def first_fit(cluster: list, cur_vm: VirtMac, map_cluster: dict):
+    correct = False
+    for i in cluster:
+        if i.check_size(cur_vm):
+            i.vir_mac.append(cur_vm)
+            i.free_core -= cur_vm.core
+            i.free_mem -= cur_vm.memory
+            map_cluster[cur_vm.id] = i
+            correct = True
+            break
+    if not correct:
+        print("No server can host this machine")
+        return False
+    return True
+
+
+def optimal_fit(cluster: list, cur_vm: VirtMac, map_cluster: dict):
+    correct = False
+    cluster.sort(key=lambda i: i.free_core)
+    for i in cluster:
+        if i.check_size(cur_vm):
+            i.vir_mac.append(cur_vm)
+            i.free_core -= cur_vm.core
+            i.free_mem -= cur_vm.memory
+            map_cluster[cur_vm.id] = i
+            correct = True
+            break
+    if not correct:
+        print("No server can host this machine")
+        return False
+    return True
+
+
+def online_alg(cluster: list, map_cluster: dict, vms: list, vm_list: list):
+    gen_time, limit_calls, regime = read_online()
+    vm, vm_list = generating(vms, vm_list)
+    first_fit(cluster, vm, map_cluster)
+    start = time.time()
+    count = 0
+    ok = True
+    while True:
+        if count >= limit_calls:
+            print("Maximum number of generations reached")
+            break
+        if not ok:
+            break
+        if (time.time() - start) >= gen_time:
+            vm, vm_list = generating(vms, vm_list)
+            start = time.time()
+            if regime == "first":
+                count += 1
+                ok = first_fit(cluster, vm, map_cluster)
+            elif regime == "optimal":
+                count += 1
+                ok = optimal_fit(cluster, vm, map_cluster)
 
 
 if __name__ == '__main__':
-    start_time = time.time()
-    servers = [Server(100, 500), Server(15, 1000)]
-    vm = [VirtMac(4, 16), VirtMac(8, 32), VirtMac(16, 32)]
-    t = int(input("Insert count of servers in cluster: \n"))
-    c_vm = int(input("Insert count of virtual machine: \n"))
-
-    cluster = []
-    vms = []
-    for i in range(t):
-        tmp = servers[random.randint(0, len(servers) - 1)]
-        cluster.append(Server(tmp.core, tmp.memory, id=i+1))
-    for i in range(c_vm):
-        tmp = vm[random.randint(0, len(vm)-1)]
-        vms.append(VirtMac(tmp.core, tmp.memory, id=i+1))
+    regime, vm = read_cfg()
+    cluster = create_cluster()
+    vms = create_vms()
 
     map_cluster = {}
     cluster, map_cluster = clustering(vms, cluster, map_cluster)
     if len(cluster) == 0:
         exit(0)
-    new_map = {}
-    new_cluster = cluster_copy(cluster)
-    for i in new_cluster:
-        for j in i.vir_mac:
-            new_map[j.id] = i
-    new_map, num_migr = first_fit_decreasing(new_cluster, new_map)
-    act_serv = 0
-    for i in new_cluster:
-        i.deactivation()
-        if i.active == True:
-            act_serv += 1
-    weight = [act_serv, num_migr]
-    print(weight)
     computing_free_cluster(cluster)
-    weight = new_alg(cluster, map_cluster, weight)
-    print(weight)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    weight = [len(cluster), 0]
+
+    if regime == "pack":
+        start_time = time.time()
+        read_pack()
+        weight = new_alg(cluster, map_cluster, weight)
+        print(weight)
+        if weight[1] == len(vms):
+            print("Don't find normal clustering")
+        print("--- %s seconds ---" % (time.time() - start_time))
+    elif regime == "online":
+        online_alg(cluster, map_cluster, vm, vms)
+        computing_free_cluster(cluster)
+        for i in cluster:
+            i.server_inf()
+
+
