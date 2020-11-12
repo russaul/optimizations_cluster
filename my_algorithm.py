@@ -487,6 +487,7 @@ if __name__ == '__main__':
         if weight[1] == len(vms):
             print("Don't find normal clustering")
         print("--- %s seconds ---" % (time.time() - start_time))
+
     elif regime == "online":
         online_alg(cluster, map_cluster, vm, vms)
         computing_free_cluster(cluster)
